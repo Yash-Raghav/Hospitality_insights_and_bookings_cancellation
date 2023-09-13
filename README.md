@@ -4,11 +4,11 @@
 
 **Problem Statement**
 
-A fictional hotel company is receiving customers from all over the world. For each guest it has various kinds of information regarding the demographic details of the customer, their needs, special requests, food preference and so on. Once it can predict whether the guest will get canceled, the management team can make better informed decisions regarding the forecasting and rooms status to increase the bookings and attract more customers. 
+A fictional hotel company is receiving customers from all over the world. For each guest it has various kinds of information regarding the demographic details of the customer, their needs, special requests, food preference and so on. Once it can predict whether the booking will get canceled, the management team can make better informed decisions regarding the forecasting and rooms status to increase the bookings and attract more customers. 
 
 **Strategy**
 
-The management team of the hotels has provided a dataset containing 119,390 distinct records and asked to do a brief analysis on what different factors affect the bookings and how to increase those bookings based on customer needs so they can be better prepared to provide with differt services.
+The management team of the company has provided a dataset containing 119,390 distinct records and asked to do a brief analysis on what different factors affect the bookings and how to increase those bookings based on customer needs so they can be better prepared to provide with different services.
 
 Analysed completely in R language, a brief analysis was done on the major variables with different statistical techniques and visualisations for better clarity. After breaking down the data into meaningful insights, I created a predictive binary classification model to find whether a particular booking will get cancelled or will get materialised.
 
