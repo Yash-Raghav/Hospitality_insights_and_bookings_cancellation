@@ -1,0 +1,249 @@
+---
+title: "Hotel Bookings, Sales and Revenue: Analysis and Insights"
+author: ""
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE,warning = FALSE, message = FALSE)
+```
+
+# Introduction
+
+This project aims to present a brief analysis of the booking patterns and sales status to assist the management in determining the different types of guests they receive and to assess the status of such bookings which in turn will be utilised to make a predictive model on whether a booking will be canceled or not based on the different variables available. 
+
+The dataset contains 32 different variables which were analysed and detailed insights were generated which the management can utilise to plan and promote their hotels to prospective customers.
+
+## Loading the packages
+
+```{r hotel}
+library(readxl)
+library(skimr)
+library(DT)
+library(plotly)
+library(tidyverse)
+library(caTools)
+library(caret)
+```
+
+## Reading and analysing the dataset
+
+```{r read}
+data_dictionary <- read_xlsx("Hospitality_Analysis.xlsx")
+datatable(
+  head(data_dictionary,40),
+  extensions = 'FixedColumns',
+  options = list(
+    scrollY = "400px",
+    scrollX = TRUE,
+    fixedColumns = TRUE
+  )
+)
+
+df <- read_xlsx("Hospitality_Analysis.xlsx",sheet=2)
+data.frame(head(df))
+
+str(df)
+
+skim_without_charts(df)
+```
+
+Only children column has NA values. Since this is just 4 rows we can change the values to 0.
+
+```{r }
+
+df$children[is.na(df$children)] <- 0
+
+any(is.na(df))
+```
+
+## Exploratory Data Analysis
+
+### Distribution of bookings by hotel 
+
+
+```{r }
+df %>% count(hotel)
+```
+
+**Canceled bookings**
+
+```{r }
+round(prop.table(table(df$is_canceled)),2)*100
+```
+
+63% of bookings get materialised while 37% of all bookings get canceled.
+
+```{r }
+
+ggplot(df,aes(is_canceled,fill=factor(hotel))) + 
+  geom_histogram(binwidth = 0.2) + 
+  scale_x_continuous(breaks = seq(0, 1, 1)) + theme_bw() +
+  scale_fill_manual(values=c("#8da0cb", "#66c2a4")) +
+  labs(title = "Distribution of bookings by hotel and cancellation")
+```
+
+
+
+
+```{r }
+
+plot_ly(df,x=~adr,y=~hotel,type="box", color=~hotel) %>% 
+  layout(title = "Distribution of ADR") 
+nrow(df[df$adr>5000,])
+
+```
+
+Only 1 row has extremely high value of ADR. This can be replaced with the mean of ADR.
+
+```{r }
+df[df$adr>5000,]$adr <- mean(df$adr)
+plot_ly(df,x=~adr,y=~hotel,type="box", color=~hotel) %>% 
+  layout(title = "Distribution of ADR") 
+
+```
+
+Median ADR falls into a range of around 80 to 100$. People staying in city hotels are paying a higher ADR compared to resort hotels.
+
+
+```{r }
+
+ggplot(df,aes(factor(arrival_date_year), fill=hotel)) + geom_bar(width=0.25) + theme_bw()+
+  scale_fill_manual(values=c("#8da0cb", "#66c2a4")) +
+  labs(title = "Bookings received per year")
+```
+
+
+```{r }
+
+year_df <- df %>% group_by(arrival_date_year = factor(arrival_date_year)) %>% 
+  summarise(adr = mean(adr))
+ggplot(year_df,aes(arrival_date_year,adr)) + geom_line(aes(group=1)) + theme_bw() + 
+  labs(title = "Mean ADR by year")
+```
+
+
+
+```{r }
+
+month <-as.factor(df$arrival_date_month)
+df$month <- factor(month, levels=c("January","February","March","April","May","June","July","August","September","October","November","December"))
+ggplot(df,aes(x=month, fill=hotel)) + geom_bar() + theme_bw() +
+  theme(axis.text.x = element_text(angle = 45, vjust = 0.5)) +
+  scale_fill_manual(values=c("#8da0cb", "#66c2a4")) +
+  labs(title = "Bookings by month")
+
+ggplot(df,aes(x=month, y=adr, fill=hotel)) + geom_col(position="dodge") + theme_bw() +
+  scale_x_discrete(guide = guide_axis(angle = 45)) + 
+  scale_fill_manual(values=c("#8da0cb", "#66c2a4")) +
+  labs(title = "ADR by month")
+```
+
+Bookings received are highest in month of July and August and similarly ADR is higher for those months for the resort hotel. However City hotels have a higher ADR in the months of May and December.
+
+
+
+```{r }
+
+ggplot(df,aes(arrival_date_day_of_month, fill=hotel)) + geom_bar() + theme_bw()+
+  scale_fill_manual(values=c("#8da0cb", "#66c2a4")) +
+  labs(title = "Bookings received by date of month")
+```
+
+No discernible pattern seems to be there for bookings by date of month.
+
+```{r }
+
+fig <- plot_ly(df,x=~lead_time,y=~factor(is_canceled),type="box", color=~factor(is_canceled)) 
+fig %>% layout(title = "Booking cancellations by lead time",yaxis=list(title="Cancelled")) 
+
+```
+
+
+```{r }
+
+weekend_stay <- df$stays_in_weekend_nights
+weekday_stay <- df$stays_in_week_nights
+df$length_of_stay <- weekend_stay + weekday_stay
+
+ggplot(df[df$length_of_stay<=15,],aes(x=factor(length_of_stay),fill=hotel)) + 
+  geom_bar(position="dodge") +
+  scale_fill_manual(values=c("#8da0cb", "#66c2a4")) +
+  labs(title = "Average Length of stay") + theme_bw()
+
+```
+
+Length of stay for majority of the bookings average between 1-4 days. Duration of 5 days and under have higher frequency for city hotel bookings. However for longer duration stays, resort hotels are more frequently chosen.
+
+
+
+
+```{r }
+
+df$child <- ifelse(df$children>1 | df$babies>1,"Yes","No")
+
+plot_ly(df,x=~adr,y=~child,type="box", color=~child) %>% 
+  layout(title = "ADR by children present or not") 
+
+```
+
+
+
+```{r }
+
+ggplot(df,aes(market_segment,fill=factor(is_canceled))) + geom_bar() + 
+  facet_wrap(~hotel,ncol=1) + theme_bw() + theme(axis.text.x = element_text(angle = 45, vjust = 0.5)) + scale_fill_manual(values=c("#8da0cb", "#66c2a4")) +
+  labs(title = "Bookings distribution by Market Segment")
+
+```
+
+
+```{r }
+
+ggplot(df,aes(reservation_status,fill=deposit_type)) + geom_bar(width=0.25) + theme_bw() +
+  theme_bw() + labs(title = "Reservation status of bookings") +
+  scale_fill_manual(values=c("#8da0cb", "#66c2a4","#FF0000"))
+
+```
+
+### Training model
+
+**Splitting train and test set**
+
+```{r }
+
+df <- df %>% mutate(arrival_date_month=as.factor(arrival_date_month))
+
+set.seed(42)
+sample <- sample.split(df$is_canceled,SplitRatio=0.8)
+train <- subset(df,sample==T)
+test <- subset(df,sample==F)
+
+```
+
+Since we are trying to predict whether a booking will get canceled, this is a binary categorisation. Here I am using **logistic regression** to train the model.
+
+```{r }
+
+model <- glm(is_canceled~lead_time + arrival_date_year + 
+               arrival_date_month + arrival_date_week_number + 
+               previous_cancellations + adr + deposit_type + customer_type + length_of_stay +
+               child, family=binomial(logit),train,na.action = na.exclude)
+
+summary(model)
+
+```
+
+### Model performance analysis
+
+```{r }
+test$status <- predict(model,test,type="response")
+test$status2 <- ifelse(test$status>0.5,1,0)
+
+confusionMatrix(as.factor(test$status2),as.factor(test$is_canceled))
+
+```
+
+
+
+
